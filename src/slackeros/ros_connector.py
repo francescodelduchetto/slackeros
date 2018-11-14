@@ -18,6 +18,7 @@ from Queue import Queue, Empty
 import cv2
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs.msg import Image
 
 def __signal_handler(signum, frame):
     print "stopped."
@@ -103,6 +104,32 @@ class RosConnector(SlackConnector):
         self.queue_worker.setDaemon(True)
         self.queue_worker.start()
 
+    def log_image(self, type):
+        # upload image
+        image = rospy.wait_for_message("/head_xtion/rgb/image_mono", Image, timeout=1.5)
+        try:
+            # Convert your ROS Image message to OpenCV2
+            cv2_img = self.bridge.imgmsg_to_cv2(image, type)
+        except CvBridgeError, e:
+            rospy.logwarn(e)
+        else:
+            # Save your OpenCV2 image as a jpeg
+            image_file = '/tmp/camera_image.jpeg'
+            cv2.imwrite(image_file, cv2_img)
+            # upload to slack
+            params = {
+            'token': self.access_token,
+            'channels': '#administration',
+            'filename': image_file,
+            'filetype': 'jpeg',
+            'title': 'Image from the robot camera'
+            }
+            file = {
+                'file': open(image_file, 'rb')
+            }
+            self.send_image(params, file)
+            rospy.loginfo("Image %s uploaded to slack" % image_file)
+
     def process_queue(self):
 
         def __send_out(t):
@@ -114,33 +141,8 @@ class RosConnector(SlackConnector):
                 rospy.logdebug('sending out: %s' % str(m))
                 self.send(m)
                 self.attachment_buffer[t] = []
-		if self.upload_images:
-                    # upload image
-                    image = rospy.wait_for_message("/head_xtion/rgb/image_mono", Image, timeout=0.5)
-                    try:
-                        # Convert your ROS Image message to OpenCV2
-                        cv2_img = self.bridge.imgmsg_to_cv2(image, "mono8")
-                    except CvBridgeError, e:
-                        rospy.logwarn(e)
-                    else:
-                        # Save your OpenCV2 image as a jpeg
-                        image_file = '/tmp/camera_image.jpeg'
-                        cv2.imwrite(image_file, cv2_img)
-                        # upload to slack
-			params = {
-			    'token': self.access_token,
-			    'channels': '#administration',
-			    'filename': image_file,
-			    'filetype': 'jpeg',
-			    'title': 'Image from the robot camera'
-			}
-                        file = {
-			    'file': open(image_file, 'rb')
-                        }
-			self.send_image(params, file)
-			rospy.loginfo("Image %s uploaded to slack" % image_file)
-
-
+                if self.upload_images:
+                    self.log_image("mono8")
 
         while not rospy.is_shutdown():
             try:
@@ -200,6 +202,8 @@ class RosConnector(SlackConnector):
             topic, blocking=False)
         if msg_class is None:
             return '`topic %s not found`' % topic
+        elif msg_class == Image:
+            self.log_image('rgb8')
         try:
             msg = rospy.wait_for_message(
                 topic, msg_class, timeout)
