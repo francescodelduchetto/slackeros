@@ -107,8 +107,11 @@ class RosConnector(SlackConnector):
     def log_image(self, type, topic='/head_xtion/rgb/image_mono'):
         class ImageUploader(Thread):
 
-            def __init__(self, type='rgb8', topic='/head_xtion/rgb/image_mono'):
+            def __init__(self, access_token, bridge, send_image, type='rgb8', topic='/head_xtion/rgb/image_mono'):
                 Thread.__init__(self)
+                self.access_token = access_token
+                self.bridge = bridge
+                self.send_image = send_image
                 self.type = type
                 self.topic = topic
 
@@ -138,7 +141,7 @@ class RosConnector(SlackConnector):
                     self.send_image(params, file)
                     rospy.loginfo("Image %s uploaded to slack" % image_file)
 
-        ImageUploader(type, topic).start()
+        ImageUploader(self.access_token, self.bridge, self.send_image, type, topic).start()
 
     def process_queue(self):
 
