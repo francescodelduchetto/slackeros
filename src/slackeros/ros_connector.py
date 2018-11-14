@@ -108,6 +108,7 @@ class RosConnector(SlackConnector):
         class ImageUploader(Thread):
 
             def __init__(self, type='rgb8', topic='/head_xtion/rgb/image_mono'):
+                Thread.__init__(self)
                 self.type = type
                 self.topic = topic
 
