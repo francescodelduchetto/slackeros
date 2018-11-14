@@ -106,7 +106,7 @@ class RosConnector(SlackConnector):
 
     def log_image(self, type):
         # upload image
-        image = rospy.wait_for_message("/head_xtion/rgb/image_mono", Image, timeout=1.5)
+        image = rospy.wait_for_message("/head_xtion/rgb/image_color", Image, timeout=1.5)
         try:
             # Convert your ROS Image message to OpenCV2
             cv2_img = self.bridge.imgmsg_to_cv2(image, type)
@@ -142,7 +142,7 @@ class RosConnector(SlackConnector):
                 self.send(m)
                 self.attachment_buffer[t] = []
                 if self.upload_images:
-                    self.log_image("mono8")
+                    self.log_image("rgb8")
 
         while not rospy.is_shutdown():
             try:
@@ -204,6 +204,7 @@ class RosConnector(SlackConnector):
             return '`topic %s not found`' % topic
         elif msg_class == Image:
             self.log_image('rgb8')
+            return self.__generate_output('uploading image...')
         try:
             msg = rospy.wait_for_message(
                 topic, msg_class, timeout)
