@@ -19,6 +19,7 @@ import cv2
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 
+
 def __signal_handler(signum, frame):
     print "stopped."
     _exit(signal.SIGTERM)
@@ -150,7 +151,7 @@ class RosConnector(SlackConnector):
                 self.send(m)
                 self.attachment_buffer[t] = []
                 if self.upload_images:
-                    self.log_image("mono8")
+                    self.log_image("rgb8")
 
         while not rospy.is_shutdown():
             try:
