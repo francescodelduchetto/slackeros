@@ -1,4 +1,4 @@
-from os
+import os
 import signal
 from base_connector import SlackConnector
 import rospy
@@ -110,19 +110,22 @@ class RosConnector(SlackConnector):
     def log_image(self, type=None, topic='/head_xtion/rgb/image_color'):
         class ImageUploader(Thread):
 
-            def __init__(self, access_token, bridge, send_image, type=None, topic='/head_xtion/rgb/image_color'):
+            def __init__(self, access_token, bridge, send_image, type=None, image_format='jpeg', whitelist_channels=[], image_upload_title="", topic='/head_xtion/rgb/image_color'):
                 Thread.__init__(self)
                 self.access_token = access_token
                 self.bridge = bridge
                 self.send_image = send_image
                 self.type = type
+                self.image_format = image_format
+                self.whitelist_channels = whitelist_channels
+                self.image_upload_title = image_upload_title
                 self.topic = topic
 
             def run(self):
                 # upload image
                 try:
                     image = rospy.wait_for_message(self.topic, Image, timeout=1.5)
-                except ROSException as e:
+                except rospy.ROSException as e:
                     rospy.logwarn("No image retrieved before timeout")
                     return
 
@@ -130,6 +133,7 @@ class RosConnector(SlackConnector):
                     self.type = image.encoding
                 try:
                     # Convert your ROS Image message to OpenCV2
+                    if self.type == "rgb8": self.type = "bgr8"
                     cv2_img = self.bridge.imgmsg_to_cv2(image, self.type)
                 except CvBridgeError, e:
                     rospy.logwarn(e)
@@ -164,7 +168,7 @@ class RosConnector(SlackConnector):
                 self.send_image(params, file)
                 rospy.loginfo("Image %s uploaded to slack with encoding %s" % (image_path, self.type))
 
-        ImageUploader(self.access_token, self.bridge, self.send_image, type, topic).start()
+        ImageUploader(self.access_token, self.bridge, self.send_image, type, self.image_format, self.whitelist_channels, self.image_upload_title, topic).start()
 
     def process_queue(self):
 
